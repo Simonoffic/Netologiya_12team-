@@ -20,92 +20,15 @@ const pool = new Pool({
 app.get("/api/movies", async (req, res) => {
   try {
     const result = await pool.query(`
-          SELECT m.id, m.title, m.year, m.rating, array_agg(g.name) AS genres
+          SELECT m.id, m.title, m.year, m.rating, ui.liked, array_agg(g.name) AS genres
           FROM movies m
           LEFT JOIN movie_genres mg ON m.id = mg.movie_id
           LEFT JOIN genres g ON mg.genre_id = g.id
-          GROUP BY m.id
+          LEFT JOIN user_interactions ui ON m.id = ui.movie_id
+          GROUP BY m.id, ui.liked
+          ORDER BY m.title
       `);
     res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Ошибка на сервере");
-  }
-});
-
-// Получение всех жанров
-app.get("/api/genres", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM genres");
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Ошибка на сервере");
-  }
-});
-
-// Добавление фильма в избранное
-app.post("/api/select", async (req, res) => {
-  const { movieId } = req.body;
-  try {
-    const result = await pool.query(
-      "INSERT INTO selected_movies (movie_id) VALUES ($1) RETURNING *",
-      [movieId]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Ошибка на сервере");
-  }
-});
-
-// Получение всех избранных фильмов
-app.get("/api/selected", async (req, res) => {
-  try {
-    const result = await pool.query(`
-          SELECT m.id, m.title, m.year, m.rating, array_agg(g.name) AS genres
-          FROM movies m
-          INNER JOIN selected_movies s ON m.id = s.movie_id
-          LEFT JOIN movie_genres mg ON m.id = mg.movie_id
-          LEFT JOIN genres g ON mg.genre_id = g.id
-          GROUP BY m.id
-      `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Ошибка на сервере");
-  }
-});
-
-// Удаление фильма из избранного
-app.delete("/api/unselect/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query(
-      "DELETE FROM selected_movies WHERE movie_id = $1",
-      [id]
-    );
-    res.status(200).send(`Фильм с id=${id} удален из избранного`);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Ошибка на сервере");
-  }
-});
-
-// Получение случайного фильма для рекомендаций
-app.get("/api/recommend", async (req, res) => {
-  try {
-    const result = await pool.query(`
-          SELECT m.id, m.title, m.year, m.rating, array_agg(g.name) AS genres
-          FROM movies m
-          LEFT JOIN movie_genres mg ON m.id = mg.movie_id
-          LEFT JOIN genres g ON mg.genre_id = g.id
-          WHERE m.id NOT IN (SELECT movie_id FROM user_interactions)
-          GROUP BY m.id
-          ORDER BY RANDOM()
-          LIMIT 1
-      `);
-    res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).send("Ошибка на сервере");
