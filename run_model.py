@@ -4,19 +4,20 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 import json
+import io
 
 def main(user_data, all_movies):
-    genresList = ['Horror', 'Romance', 'Crime', 'Animation', 'Mystery', 'Children', 'Sci-Fi', 
-                  'Adventure', 'Musical', 'Drama', 'Action', 'IMAX', 'Fantasy', 'Film-Noir', 
+    genresList = ['Horror', 'Romance', 'Crime', 'Animation', 'Mystery', 'Children', 'Sci-Fi',
+                  'Adventure', 'Musical', 'Drama', 'Action', 'IMAX', 'Fantasy', 'Film-Noir',
                   '(no genres listed)', 'War', 'Documentary', 'Western', 'Thriller', 'Comedy']
-    
+
     labelencoder = LabelEncoder()
     coded_genres = labelencoder.fit_transform(genresList)
     genre2code = dict(zip(labelencoder.classes_, coded_genres))
 
     maxYear = 2019
     dataset = []
-    
+
     for movie in user_data:
         params_of_film = [0] * 22
         GENRES = movie['genres']
@@ -66,6 +67,12 @@ def main(user_data, all_movies):
     print(json.dumps(filmsForShow))
 
 if __name__ == "__main__":
-    user_data = json.loads(sys.argv[1])
-    all_movies = json.loads(sys.argv[2])
+    f = io.open(sys.argv[1], mode="r", encoding="utf-8")
+    user_data = json.loads(f.read())
+
+    f = io.open(sys.argv[2], mode="r", encoding="utf-8")
+    all_movies = json.loads(f.read())
+
+    print()
+
     main(user_data, all_movies)

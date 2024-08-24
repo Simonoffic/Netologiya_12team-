@@ -1,274 +1,264 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Table, message } from 'antd';
-import axios from 'axios';
-import { HeartOutlined, HeartFilled } from '@ant-design/icons';
+import React, { useState, useEffect } from "react";
+import { Layout, Menu, Button, Table, message, Modal } from "antd";
+import axios from "axios";
+import { PlayCircleOutlined } from "@ant-design/icons";
 
 const { Header, Content } = Layout;
 
-const columnsMovies = (handleSelectMovie, selectedMovies) => [
+const columnsMovies = (handleWatchMovie) => [
   {
-    title: 'Название',
-    dataIndex: 'title',
-    key: 'title',
+    title: "Название",
+    dataIndex: "title",
+    key: "title",
   },
   {
-    title: 'Год',
-    dataIndex: 'year',
-    key: 'year',
+    title: "Год",
+    dataIndex: "year",
+    key: "year",
   },
   {
-    title: 'Жанры',
-    dataIndex: 'genres',
-    key: 'genres',
-    render: (genres) => genres.join(', '),
+    title: "Жанры",
+    dataIndex: "genres",
+    key: "genres",
+    render: (genres) => genres.join(", "),
   },
   {
-    title: 'Рейтинг',
-    dataIndex: 'rating',
-    key: 'rating',
+    title: "Рейтинг",
+    dataIndex: "rating",
+    key: "rating",
   },
   {
-    title: 'Действие',
-    key: 'action',
-    render: (text, record) => (
+    title: "Смотреть",
+    key: "action",
+    render: (value, record, index) => (
       <Button
         type="link"
-        onClick={() => handleSelectMovie(record.id)}
+        onClick={() => handleWatchMovie(record)}
         icon={
-          selectedMovies.includes(record.id) ? (
-            <HeartFilled style={{ color: 'red' }} />
-          ) : (
-            <HeartOutlined />
-          )
+          <PlayCircleOutlined
+            style={{
+              color:
+                record.liked === null || record.liked === undefined
+                  ? "gray"
+                  : record.liked
+                  ? "green"
+                  : "red",
+            }}
+          />
         }
       />
     ),
   },
 ];
 
-const columnsSelectedMovies = (handleUnselectMovie) => [
+const columnsSelectedMovies = () => [
   {
-    title: 'Название',
-    dataIndex: 'title',
-    key: 'title',
+    title: "Название",
+    dataIndex: "title",
+    key: "title",
   },
   {
-    title: 'Год',
-    dataIndex: 'year',
-    key: 'year',
+    title: "Год",
+    dataIndex: "year",
+    key: "year",
   },
   {
-    title: 'Жанры',
-    dataIndex: 'genres',
-    key: 'genres',
-    render: (genres) => genres.join(', '),
+    title: "Жанры",
+    dataIndex: "genres",
+    key: "genres",
+    render: (genres) => genres.join(", "),
   },
   {
-    title: 'Рейтинг',
-    dataIndex: 'rating',
-    key: 'rating',
+    title: "Рейтинг",
+    dataIndex: "rating",
+    key: "rating",
   },
   {
-    title: 'Действие',
-    key: 'action',
-    render: (text, record) => (
-      <Button type="link" danger onClick={() => handleUnselectMovie(record.id)}>
-        Удалить
-      </Button>
-    ),
+    title: "Статус",
+    key: "liked",
+    render: (text, record) =>
+      record.liked ? "Просмотрен + понравился" : "Просмотрен",
   },
 ];
 
 function App() {
   const [movies, setMovies] = useState([]);
-  const [selectedMovies, setSelectedMovies] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
-  const [currentTab, setCurrentTab] = useState('1');
+  const [currentMovie, setCurrentMovie] = useState(null);
+  const [currentTab, setCurrentTab] = useState("1");
   const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     fetchMovies();
-    fetchSelectedMovies();
   }, []);
 
   const fetchMovies = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/movies');
+      const response = await axios.get("http://localhost:5000/api/movies");
       setMovies(response.data);
     } catch (error) {
-      message.error('Ошибка при загрузке фильмов');
+      message.error("Ошибка при загрузке фильмов");
     }
   };
 
-  const fetchSelectedMovies = async () => {
+  const handleWatchMovie = (movie) => {
+    setCurrentMovie(movie);
+  };
+
+  const handleWatchMovieOk = async (movie) => {
+    setCurrentMovie(null);
     try {
-      const response = await axios.get('http://localhost:5000/api/selected');
-      setSelectedMovies(response.data.map((movie) => movie.id));
+      await axios.post("http://localhost:5000/api/interact", {
+        movieId: movie.id,
+        liked: true,
+      });
+      // optimistic
+      setMovies((prev) =>
+        prev.map((x) => (x.id === movie.id ? { ...x, liked: true } : x))
+      );
+      setRecommendations((prev) =>
+        prev.map((x) => (x.id === movie.id ? { ...x, liked: true } : x))
+      );
+      messageApi.open({ content: "Фильм посмотрен и понравился", duration: 2 });
     } catch (error) {
-      message.error('Ошибка при загрузке избранных фильмов');
+      message.error("Ошибка просмотра фильма");
     }
   };
 
-  // const fetchRecommendation = async () => {
-  //   try {
-  //     const response = await axios.get('http://localhost:5000/api/recommend');
-  //     setRecommendation(response.data);
-  //   } catch (error) {
-  //     message.error('Ошибка при загрузке рекомендации');
-  //   }
-  // };
-
-  const handleSelectMovie = async (movieId) => {
+  const handleWatchMovieCancel = async (movie) => {
+    setCurrentMovie(null);
     try {
-      await axios.post('http://localhost:5000/api/select', { movieId });
-      message.success('Фильм добавлен в избранное');
-      fetchSelectedMovies();
+      await axios.post("http://localhost:5000/api/interact", {
+        movieId: movie.id,
+        liked: false,
+      });
+      // optimistic
+      setMovies((prev) =>
+        prev.map((x) => (x.id === movie.id ? { ...x, liked: false } : x))
+      );
+      console.log(recommendations, movie);
+      setRecommendations((prev) =>
+        prev.map((x) => (x.id === movie.id ? { ...x, liked: false } : x))
+      );
+      messageApi.open({ content: "Фильм посмотрен", duration: 2 });
     } catch (error) {
-      message.error('Ошибка при добавлении фильма в избранное');
-    }
-  };
-
-  const handleUnselectMovie = async (movieId) => {
-    try {
-      await axios.delete(`http://localhost:5000/api/unselect/${movieId}`);
-      message.success('Фильм удален из избранного');
-      fetchSelectedMovies();
-    } catch (error) {
-      message.error('Ошибка при удалении фильма из избранного');
-    }
-  };
-
-  const handleLike = async () => {
-    if (recommendations[currentIndex]) {
-      try {
-        await axios.post('http://localhost:5000/api/interact', {
-          movieId: recommendations[currentIndex].id,
-          liked: true,
-        });
-        messageApi.open({ content: 'Фильм лайкнут', duration: 2 });
-        handleNextRecommendation();
-      } catch (error) {
-        message.error('Ошибка при лайке фильма');
-      }
-    }
-  };
-
-  const handleSkip = async () => {
-    if (recommendations[currentIndex]) {
-      try {
-        await axios.post('http://localhost:5000/api/interact', {
-          movieId: recommendations[currentIndex].id,
-          liked: false,
-        });
-        messageApi.open({ content: 'Фильм пропущен', duration: 2 });
-        handleNextRecommendation();
-      } catch (error) {
-        message.error('Ошибка при пропуске фильма');
-      }
+      message.error("Ошибка просмотра фильма");
     }
   };
 
   const handleResetInteractions = async () => {
     try {
-      await axios.delete('http://localhost:5000/api/reset');
-      message.success('Выборы пользователя обнулены');
+      await axios.delete("http://localhost:5000/api/reset");
+      await fetchMovies();
+      message.success("Выборы пользователя обнулены");
     } catch (error) {
-      message.error('Ошибка при обнулении данных');
+      message.error("Ошибка при обнулении данных");
     }
   };
 
   const [loading, setLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
 
   const fetchRecommendation = async () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        'http://localhost:5000/api/train_and_recommend'
+        "http://localhost:5000/api/train_and_recommend"
       );
       setRecommendations(response.data);
-      setCurrentIndex(0); // Сброс индекса на начало при новой загрузке
     } catch (error) {
-      message.error('Ошибка при получении рекомендаций');
+      message.error("Ошибка при получении рекомендаций");
     } finally {
       setLoading(false);
     }
   };
-
-  const handleNextRecommendation = () => {
-    if (currentIndex < recommendations.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      fetchRecommendation(); // Если достигнут конец списка, запрашиваем новые рекомендации
-    }
-  };
-
-  useEffect(() => {
-    if (currentTab === '3') {
-      fetchRecommendation();
-    }
-  }, [currentTab]);
-
+  const watchedMovies = movies.filter((x) => x.liked !== null);
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: "100vh" }}>
       {contextHolder}
+      <Modal
+        title={currentMovie?.title ?? ""}
+        open={currentMovie !== null}
+        onOk={() => handleWatchMovieOk(currentMovie)}
+        onCancel={() => handleWatchMovieCancel(currentMovie)}
+        okText="Понравилось"
+        cancelText="Закрыть"
+      >
+        {currentMovie && (
+          <div style={{ display: "flex", flexDirection: "row" }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <p>Год</p>
+              <p>Рейтинг</p>
+              <p>Жанры</p>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                flex: 1,
+                alignItems: "end",
+              }}
+            >
+              <p>{currentMovie.year}</p>
+              <p>{currentMovie.rating}</p>
+              <p>{currentMovie.genres}</p>
+            </div>
+          </div>
+        )}
+      </Modal>
       <Header>
         <Menu
           theme="dark"
           mode="horizontal"
           defaultSelectedKeys={[currentTab]}
-          onClick={(e) => setCurrentTab(e.key)}
+          onClick={(e) => {
+            setCurrentTab(e.key);
+            if (e.key === "3") {
+              fetchRecommendation();
+            }
+          }}
         >
           <Menu.Item key="1">Все фильмы</Menu.Item>
-          <Menu.Item key="2">Избранные фильмы</Menu.Item>
+          <Menu.Item key="2">Просмотренные фильмы</Menu.Item>
           <Menu.Item key="3">Рекомендации</Menu.Item>
           <Menu.Item key="4">Главная</Menu.Item>
         </Menu>
       </Header>
-      <Content style={{ padding: '20px' }}>
-        {currentTab === '1' && (
+      <Content style={{ padding: "20px" }}>
+        {currentTab === "1" && (
           <Table
             dataSource={movies}
-            columns={columnsMovies(handleSelectMovie, selectedMovies)}
+            columns={columnsMovies(handleWatchMovie)}
             rowKey="id"
           />
         )}
-        {currentTab === '2' && (
+        {currentTab === "2" && (
           <Table
-            dataSource={movies.filter((movie) =>
-              selectedMovies.includes(movie.id)
-            )}
-            columns={columnsSelectedMovies(handleUnselectMovie)}
+            dataSource={watchedMovies}
+            columns={columnsSelectedMovies()}
             rowKey="id"
           />
         )}
-        <>
-          {loading ? (
-            <p>Подождите, модель обучается...</p>
+        {currentTab === "3" &&
+          (loading ? (
+            <p>Получение рекомендаций от модели...</p>
           ) : (
-            currentTab === '3' &&
-            recommendations.length > 0 && (
-              <div style={{ textAlign: 'center' }}>
-                <h2>{recommendations[currentIndex].title}</h2>
-                <p>{`Год: ${recommendations[currentIndex].year}, Жанры: ${
-                  Array.isArray(recommendations[currentIndex].genres)
-                    ? recommendations[currentIndex].genres.join(', ')
-                    : 'Нет данных'
-                }, Рейтинг: ${recommendations[currentIndex].rating}`}</p>
-                <Button
-                  type="primary"
-                  onClick={handleLike}
-                  style={{ marginRight: '10px' }}
-                >
-                  Лайк
-                </Button>
-                <Button onClick={handleSkip}>Пропустить</Button>
-              </div>
-            )
-          )}
-        </>
-        {currentTab === '4' && (
-          <div style={{ textAlign: 'center' }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+            >
+              <p>
+                Вы просмотрели {watchedMovies.length} фильмов.{" "}
+                {watchedMovies.length < 5 &&
+                  "Для получения рекомендаций на основе Ваших предпочтений посмотрите более 5 фильмов."}
+              </p>
+              <Table
+                dataSource={recommendations}
+                columns={columnsMovies(handleWatchMovie)}
+                rowKey="id"
+              />
+            </div>
+          ))}
+        {currentTab === "4" && (
+          <div style={{ textAlign: "center" }}>
             <h1>
               Сайт разработан командой номер 12 на хакатоне «Цифровые технологии
               анализа данных»
