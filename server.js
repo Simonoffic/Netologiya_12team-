@@ -186,7 +186,7 @@ app.get("/api/train_and_recommend", async (req, res) => {
 
 function runModel(userData, allMovies) {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn("python3", [
+    const pythonProcess = spawn("python", [
       "run_model.py",
       JSON.stringify(userData),
       JSON.stringify(allMovies),
