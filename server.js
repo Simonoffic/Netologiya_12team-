@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const fs = require("fs");
 const express = require("express");
 const { Pool } = require("pg");
 const cors = require("cors");
@@ -109,10 +110,14 @@ app.get("/api/train_and_recommend", async (req, res) => {
 
 function runModel(userData, allMovies) {
   return new Promise((resolve, reject) => {
+    const userDataFilename = "1.json";
+    const allMoviesFilename = "2.json";
+    fs.writeFileSync(userDataFilename, JSON.stringify(userData));
+    fs.writeFileSync(allMoviesFilename, JSON.stringify(allMovies));
     const pythonProcess = spawn("python", [
       "run_model.py",
-      JSON.stringify(userData),
-      JSON.stringify(allMovies),
+      userDataFilename,
+      allMoviesFilename,
     ]);
 
     let data = "";
