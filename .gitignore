@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 .env
+2.json
+1.json
+
+
+git config --global user.email "MY_NAME@example.com"
